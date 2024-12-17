@@ -1,0 +1,1 @@
+rm error.txt output.txt lex.yy.c parser.tab.c parser.tab.h parser

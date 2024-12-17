@@ -1,0 +1,59 @@
+# Test file for our language
+# Testing variable declarations and initializations
+int x = 10;
+float y = 20.5;
+char c = 'A';
+
+# Testing arithmetic operations
+int sum = x + 5;
+float product = y * 2.0;
+int quotient = x / 2;
+
+# Testing character operations
+char nextChar = 'B';
+char newline = '\n';
+
+# Testing comparison operators
+if (x > 5) {
+    print x;
+}
+
+if (y <= 20.5) {
+    print y;
+} else {
+    print x;
+}
+
+# Testing while loop
+int counter = 0;
+while (counter < 3) {
+    print counter;
+    counter = counter + 1;
+}
+
+# Testing compound expressions
+int result = (x + 5) * (y - 10.0);
+print result;
+
+# Testing division by zero protection
+#int bad = x / 0;  # Should print error and set to 0
+#float bad2 = y / 0.0;  # Should print error and set to 0.0
+
+# Testing all comparison operators
+if (x == 10) {
+    print x;
+}
+
+if (y != 0.0) {
+    print y;
+}
+
+
+# Testing block scoping
+{
+    int z = 30;
+    print z;
+}
+
+# Testing character escapes
+char tab = '\t';
