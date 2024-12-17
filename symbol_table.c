@@ -1,9 +1,16 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "symbol_table.h"
+
+extern FILE *error_file;
+extern int error_count;
 
 SymbolTable* create_symbol_table() {
     SymbolTable* table = malloc(sizeof(SymbolTable));
     if (!table) {
-        perror("Failed to allocate memory for symbol table");
+        fprintf(error_file, "Failed to allocate memory for symbol table\n");
+        error_count++;
         exit(EXIT_FAILURE);
     }
     table->head = NULL;
@@ -13,13 +20,15 @@ SymbolTable* create_symbol_table() {
 void add_symbol(SymbolTable* table, const char* name, const char* type) {
     Symbol* existing = lookup_symbol(table, name);
     if (existing) {
-        fprintf(stderr, "Symbol '%s' already declared.\n", name);
+        fprintf(error_file, "Symbol '%s' already declared.\n", name);
+        error_count++;
         return;
     }
 
     Symbol* sym = malloc(sizeof(Symbol));
     if (!sym) {
-        perror("Failed to allocate memory for symbol");
+        fprintf(error_file, "Failed to allocate memory for symbol\n");
+        error_count++;
         exit(EXIT_FAILURE);
     }
     sym->name = strdup(name);

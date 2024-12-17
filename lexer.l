@@ -40,8 +40,6 @@ extern FILE *error_file;
 "int"        { return TYPE_INT; }
 "float"      { return TYPE_FLOAT; }
 "char"       { return TYPE_CHAR; }
-"true"       { return TRUE; }
-"false"      { return FALSE; }
 
 \'([^\\'\n]|\\.)\' { 
     if (yyleng == 3) { // Simple character like 'A'

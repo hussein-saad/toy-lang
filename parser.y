@@ -14,6 +14,8 @@ int yylex();
 ASTNode* ast_root = NULL;
 
 SymbolTable* symbol_table;
+int error_count = 0;
+
 
 int node_is_literal_int_zero(ASTNode* node);
 int node_is_literal_float_zero(ASTNode* node);
@@ -34,7 +36,6 @@ int node_is_literal_float_zero(ASTNode* node);
 %token <int_val> NUMBER
 %token <float_val> FLOAT_NUMBER
 %token <char_val> CHAR_LITERAL
-%token TRUE FALSE
 %token PLUS MINUS MULT DIV ASSIGN
 %token SEMICOLON LPAREN RPAREN LBRACE RBRACE
 %token GT LT GE LE EQ NEQ
@@ -112,30 +113,39 @@ declaration:
 
 assignment:
     IDENTIFIER ASSIGN expr SEMICOLON 
-    {
+    { 
         Symbol* sym = lookup_symbol(symbol_table, $1);
         if (!sym) {
             fprintf(error_file, "Undefined variable '%s'\n", $1);
+            error_count++;  
+            $$ = NULL;
+        } else {
+            $$ = create_assignment_node($1, $3);
         }
-        $$ = create_assignment_node($1, $3);
         free($1);
     }
   | IDENTIFIER ASSIGN float_expr SEMICOLON 
-    {
+    { 
         Symbol* sym = lookup_symbol(symbol_table, $1);
         if (!sym) {
             fprintf(error_file, "Undefined variable '%s'\n", $1);
+            error_count++;  
+            $$ = NULL;
+        } else {
+            $$ = create_assignment_node($1, $3);
         }
-        $$ = create_assignment_node($1, $3);
         free($1);
     }
   | IDENTIFIER ASSIGN char_expr SEMICOLON 
-    {
+    { 
         Symbol* sym = lookup_symbol(symbol_table, $1);
         if (!sym) {
             fprintf(error_file, "Undefined variable '%s'\n", $1);
+            error_count++;  
+            $$ = NULL;
+        } else {
+            $$ = create_assignment_node($1, $3);
         }
-        $$ = create_assignment_node($1, $3);
         free($1);
     }
   ;
@@ -277,6 +287,7 @@ int node_is_literal_float_zero(ASTNode* node) {
 }
 
 void yyerror(const char* s) {
+    error_count++;
     fprintf(error_file, "Error: %s\n", s);
 }
 
@@ -309,11 +320,13 @@ int main(void) {
 
     int result = yyparse();
 
-    if (result == 0 && ast_root) {
+    if (result == 0 && ast_root && error_count == 0) {
         FILE* original_stdout = stdout;
         stdout = output_file;
         print_ast(ast_root, 0);
         stdout = original_stdout;
+    } else {
+        fprintf(error_file, "Parsing failed with %d error(s).\n", error_count);
     }
 
     free_ast(ast_root);
