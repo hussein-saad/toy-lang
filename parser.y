@@ -30,6 +30,8 @@ int node_is_literal_float_zero(ASTNode* node);
 
 %token PRINT IF ELSE WHILE
 %token TYPE_INT TYPE_FLOAT TYPE_CHAR
+%token INT FLOAT CHAR
+%token INTEGER FLOAT_LITERAL CHAR_LITERAL
 %token <id> IDENTIFIER
 %token <int_val> NUMBER
 %token <float_val> FLOAT_NUMBER
@@ -43,8 +45,9 @@ int node_is_literal_float_zero(ASTNode* node);
 
 %%
 
-program: 
-    program statement 
+program:
+    declarations statements
+    | program statement 
     {
         if (!ast_root) {
             ast_root = create_program_node();
@@ -52,7 +55,7 @@ program:
         add_statement(ast_root, $2);
         $$ = ast_root;
     }
-  | statement
+    | statement
     {
         if (!ast_root) {
             ast_root = create_program_node();
@@ -60,16 +63,12 @@ program:
         add_statement(ast_root, $1);
         $$ = ast_root;
     }
-  ;
+    ;
 
-statement: 
-    declaration   { $$ = $1; }
-  | assignment    { $$ = $1; }
-  | print_stmt    { $$ = $1; }
-  | if_stmt       { $$ = $1; }
-  | while_stmt    { $$ = $1; }
-  | block         { $$ = $1; }
-  ;
+declarations:
+    /* empty */
+    | declarations declaration
+    ;
 
 declaration:
     TYPE_INT IDENTIFIER SEMICOLON 
@@ -78,37 +77,51 @@ declaration:
         $$ = create_declaration_node("int", $2, NULL);
         free($2);
     }
-  | TYPE_FLOAT IDENTIFIER SEMICOLON 
+    | TYPE_FLOAT IDENTIFIER SEMICOLON 
     { 
         add_symbol(symbol_table, $2, "float");
         $$ = create_declaration_node("float", $2, NULL);
         free($2);
     }
-  | TYPE_CHAR IDENTIFIER SEMICOLON 
+    | TYPE_CHAR IDENTIFIER SEMICOLON 
     { 
         add_symbol(symbol_table, $2, "char");
         $$ = create_declaration_node("char", $2, NULL);
         free($2);
     }
-  | TYPE_INT IDENTIFIER ASSIGN expr SEMICOLON 
+    | TYPE_INT IDENTIFIER ASSIGN expr SEMICOLON 
     { 
         add_symbol(symbol_table, $2, "int");
         $$ = create_declaration_node("int", $2, $4);
         free($2);
     }
-  | TYPE_FLOAT IDENTIFIER ASSIGN float_expr SEMICOLON 
+    | TYPE_FLOAT IDENTIFIER ASSIGN float_expr SEMICOLON 
     { 
         add_symbol(symbol_table, $2, "float");
         $$ = create_declaration_node("float", $2, $4);
         free($2);
     }
-  | TYPE_CHAR IDENTIFIER ASSIGN char_expr SEMICOLON 
+    | TYPE_CHAR IDENTIFIER ASSIGN char_expr SEMICOLON 
     { 
         add_symbol(symbol_table, $2, "char");
         $$ = create_declaration_node("char", $2, $4);
         free($2);
     }
-  ;
+    ;
+
+statements:
+    /* empty */
+    | statements statement
+    ;
+
+statement:
+    declaration
+    | assignment
+    | print_stmt
+    | if_stmt
+    | while_stmt
+    | block
+    ;
 
 assignment:
     IDENTIFIER ASSIGN expr SEMICOLON 
@@ -116,155 +129,194 @@ assignment:
         Symbol* sym = lookup_symbol(symbol_table, $1);
         if (!sym) {
             fprintf(error_file, "Undefined variable '%s'\n", $1);
-        }
-        $$ = create_assignment_node($1, $3);
-        free($1);
-    }
-  | IDENTIFIER ASSIGN float_expr SEMICOLON 
-    {
-        Symbol* sym = lookup_symbol(symbol_table, $1);
-        if (!sym) {
-            fprintf(error_file, "Undefined variable '%s'\n", $1);
-        }
-        $$ = create_assignment_node($1, $3);
-        free($1);
-    }
-  | IDENTIFIER ASSIGN char_expr SEMICOLON 
-    {
-        Symbol* sym = lookup_symbol(symbol_table, $1);
-        if (!sym) {
-            fprintf(error_file, "Undefined variable '%s'\n", $1);
-        }
-        $$ = create_assignment_node($1, $3);
-        free($1);
-    }
-  ;
-
-expr: 
-    expr PLUS term    { $$ = create_binary_op_node(OP_PLUS, $1, $3); }
-  | expr MINUS term   { $$ = create_binary_op_node(OP_MINUS, $1, $3); }
-  | expr GT term      { $$ = create_binary_op_node(OP_GT, $1, $3); }
-  | expr LT term      { $$ = create_binary_op_node(OP_LT, $1, $3); }
-  | expr GE term      { $$ = create_binary_op_node(OP_GE, $1, $3); }
-  | expr LE term      { $$ = create_binary_op_node(OP_LE, $1, $3); }
-  | expr EQ term      { $$ = create_binary_op_node(OP_EQ, $1, $3); }
-  | expr NEQ term     { $$ = create_binary_op_node(OP_NEQ, $1, $3); }
-  | term              { $$ = $1; }
-  ;
-
-term:
-    term MULT factor  { $$ = create_binary_op_node(OP_MULTIPLY, $1, $3); }
-  | term DIV factor   { 
-        if (node_is_literal_int_zero($3) || node_is_literal_float_zero($3)) {
-            fprintf(error_file, "Division by zero\n");
-            $$ = create_literal_node(LIT_INT, &(int){0}); // Or handle as needed
+            /* Do not create an AST node for undefined variable assignment */
+            $$ = NULL;
         } else {
-            $$ = create_binary_op_node(OP_DIVIDE, $1, $3); 
+            $$ = create_assignment_node($1, $3);
         }
+        free($1);
     }
-  | factor            { $$ = $1; }
-  ;
-
-factor:
-    NUMBER           { 
-        $$ = create_literal_node(LIT_INT, &(yyvsp[0].int_val)); 
+    | IDENTIFIER ASSIGN float_expr SEMICOLON 
+    {
+        Symbol* sym = lookup_symbol(symbol_table, $1);
+        if (!sym) {
+            fprintf(error_file, "Undefined variable '%s'\n", $1);
+            /* Do not create an AST node for undefined variable assignment */
+            $$ = NULL;
+        } else {
+            $$ = create_assignment_node($1, $3);
+        }
+        free($1);
     }
-  | FLOAT_NUMBER     { 
-        $$ = create_literal_node(LIT_FLOAT, &(yyvsp[0].float_val)); 
+    | IDENTIFIER ASSIGN char_expr SEMICOLON 
+    {
+        Symbol* sym = lookup_symbol(symbol_table, $1);
+        if (!sym) {
+            fprintf(error_file, "Undefined variable '%s'\n", $1);
+            /* Do not create an AST node for undefined variable assignment */
+            $$ = NULL;
+        } else {
+            $$ = create_assignment_node($1, $3);
+        }
+        free($1);
     }
-  | CHAR_LITERAL     { 
-        $$ = create_literal_node(LIT_CHAR, &(yyvsp[0].char_val)); 
-    }
-  | IDENTIFIER       { 
-        $$ = create_identifier_node($1); 
-        free($1); 
-    }
-  | LPAREN expr RPAREN { 
-        $$ = $2; 
-    }
-  ;
+    ;
 
 print_stmt:
     PRINT expr SEMICOLON 
     { 
         $$ = create_print_node($2);
     }
-  | PRINT float_expr SEMICOLON 
+    | PRINT float_expr SEMICOLON 
     { 
         $$ = create_print_node($2);
     }
-  | PRINT char_expr SEMICOLON 
+    | PRINT char_expr SEMICOLON 
     { 
         $$ = create_print_node($2);
     }
-  ;
+    ;
 
 if_stmt:
     IF LPAREN expr RPAREN statement 
     { 
         $$ = create_if_node($3, $5, NULL);
     }
-  | IF LPAREN expr RPAREN statement ELSE statement 
+    | IF LPAREN expr RPAREN statement ELSE statement 
     { 
         $$ = create_if_node($3, $5, $7);
     }
-  ;
+    ;
 
 while_stmt:
     WHILE LPAREN expr RPAREN statement 
     { 
         $$ = create_while_node($3, $5);
     }
-  ;
+    ;
 
 block:
     LBRACE program RBRACE 
     { 
         $$ = node_to_block($2);
     }
-  ;
+    ;
+
+expr:
+    expr PLUS term 
+    { $$ = create_binary_op_node(OP_PLUS, $1, $3); }
+    | expr MINUS term 
+    { $$ = create_binary_op_node(OP_MINUS, $1, $3); }
+    | expr GT term 
+    { $$ = create_binary_op_node(OP_GT, $1, $3); }
+    | expr LT term 
+    { $$ = create_binary_op_node(OP_LT, $1, $3); }
+    | expr GE term 
+    { $$ = create_binary_op_node(OP_GE, $1, $3); }
+    | expr LE term 
+    { $$ = create_binary_op_node(OP_LE, $1, $3); }
+    | expr EQ term 
+    { $$ = create_binary_op_node(OP_EQ, $1, $3); }
+    | expr NEQ term 
+    { $$ = create_binary_op_node(OP_NEQ, $1, $3); }
+    | term 
+    { $$ = $1; }
+    ;
+
+term:
+    term MULT factor 
+    { $$ = create_binary_op_node(OP_MULTIPLY, $1, $3); }
+    | term DIV factor 
+    { 
+        if (node_is_literal_int_zero($3) || node_is_literal_float_zero($3)) {
+            fprintf(error_file, "Division by zero\n");
+            /* Do not create an AST node for division by zero */
+            $$ = create_literal_node(LIT_INT, &(int){0});
+        } else {
+            $$ = create_binary_op_node(OP_DIVIDE, $1, $3); 
+        }
+    }
+    | factor 
+    { $$ = $1; }
+    ;
+
+factor:
+    NUMBER 
+    { 
+        $$ = create_literal_node(LIT_INT, &$1); 
+    }
+    | FLOAT_NUMBER 
+    { 
+        $$ = create_literal_node(LIT_FLOAT, &$1); 
+    }
+    | CHAR_LITERAL 
+    { 
+        $$ = create_literal_node(LIT_CHAR, &$1); 
+    }
+    | IDENTIFIER 
+    { 
+        $$ = create_identifier_node($1); 
+        free($1); 
+    }
+    | LPAREN expr RPAREN 
+    { 
+        $$ = $2; 
+    }
+    ;
 
 float_expr:
-    float_expr PLUS float_term     { $$ = create_binary_op_node(OP_PLUS, $1, $3); }
-  | float_expr MINUS float_term    { $$ = create_binary_op_node(OP_MINUS, $1, $3); }
-  | float_term                     { $$ = $1; }
-  ;
+    float_expr PLUS float_term 
+    { $$ = create_binary_op_node(OP_PLUS, $1, $3); }
+    | float_expr MINUS float_term 
+    { $$ = create_binary_op_node(OP_MINUS, $1, $3); }
+    | float_term 
+    { $$ = $1; }
+    ;
 
 float_term:
-    float_term MULT float_factor   { $$ = create_binary_op_node(OP_MULTIPLY, $1, $3); }
-  | float_term DIV float_factor    { 
+    float_term MULT float_factor 
+    { $$ = create_binary_op_node(OP_MULTIPLY, $1, $3); }
+    | float_term DIV float_factor 
+    { 
         if (node_is_literal_float_zero($3)) {
             fprintf(error_file, "Division by zero\n");
+            /* Do not create an AST node for division by zero */
             $$ = create_literal_node(LIT_FLOAT, &(float){0.0f});
         } else {
             $$ = create_binary_op_node(OP_DIVIDE, $1, $3); 
         }
     }
-  | float_factor                   { $$ = $1; }
-  ;
+    | float_factor 
+    { $$ = $1; }
+    ;
 
 float_factor:
-    FLOAT_NUMBER                   { 
-        $$ = create_literal_node(LIT_FLOAT, &(yyvsp[0].float_val)); 
+    FLOAT_NUMBER 
+    { 
+        $$ = create_literal_node(LIT_FLOAT, &$1); 
     }
-  | IDENTIFIER                     { 
+    | IDENTIFIER 
+    { 
         $$ = create_identifier_node($1); 
         free($1); 
     }
-  | LPAREN float_expr RPAREN      { 
+    | LPAREN float_expr RPAREN 
+    { 
         $$ = $2; 
     }
-  ;
+    ;
 
 char_expr:
-    CHAR_LITERAL                   { 
-        $$ = create_literal_node(LIT_CHAR, &(yyvsp[0].char_val)); 
+    CHAR_LITERAL 
+    { 
+        $$ = create_literal_node(LIT_CHAR, &$1); 
     }
-  | IDENTIFIER                     { 
+    | IDENTIFIER 
+    { 
         $$ = create_identifier_node($1); 
         free($1); 
     }
-  ;
+    ;
 
 %%
 
@@ -278,6 +330,8 @@ int node_is_literal_float_zero(ASTNode* node) {
 
 void yyerror(const char* s) {
     fprintf(error_file, "Error: %s\n", s);
+    /* Removed the following line to prevent error messages from being printed to the console */
+    /* fprintf(stderr, "Error: %s\n", s); */
 }
 
 int main(void) {
@@ -285,21 +339,21 @@ int main(void) {
 
     FILE *input = fopen("input.txt", "r");
     if (!input) {
-        fprintf(stderr, "Error opening input.txt\n");
+        fprintf(error_file, "Error opening input.txt\n");
         exit(EXIT_FAILURE);
     }
     yyin = input;
 
     output_file = fopen("output.txt", "w");
     if (!output_file) {
-        fprintf(stderr, "Error opening output.txt\n");
+        fprintf(error_file, "Error opening output.txt\n");
         fclose(input);
         exit(EXIT_FAILURE);
     }
 
     error_file = fopen("error.txt", "w");
     if (!error_file) {
-        fprintf(stderr, "Error opening error.txt\n");
+        fprintf(error_file, "Error opening error.txt\n");
         fclose(input);
         fclose(output_file);
         exit(EXIT_FAILURE);

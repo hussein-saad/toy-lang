@@ -1,26 +1,24 @@
 #include "symbol_table.h"
 
 SymbolTable* create_symbol_table() {
-    SymbolTable* table = malloc(sizeof(SymbolTable));
+    SymbolTable* table = (SymbolTable*)malloc(sizeof(SymbolTable));
     if (!table) {
-        perror("Failed to allocate memory for symbol table");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Memory allocation failed for SymbolTable\n");
+        exit(1);
     }
     table->head = NULL;
     return table;
 }
 
 void add_symbol(SymbolTable* table, const char* name, const char* type) {
-    Symbol* existing = lookup_symbol(table, name);
-    if (existing) {
+    if (lookup_symbol(table, name)) {
         fprintf(stderr, "Symbol '%s' already declared.\n", name);
         return;
     }
-
-    Symbol* sym = malloc(sizeof(Symbol));
+    Symbol* sym = (Symbol*)malloc(sizeof(Symbol));
     if (!sym) {
-        perror("Failed to allocate memory for symbol");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Memory allocation failed for Symbol\n");
+        exit(1);
     }
     sym->name = strdup(name);
     sym->type = strdup(type);
@@ -30,7 +28,7 @@ void add_symbol(SymbolTable* table, const char* name, const char* type) {
 
 Symbol* lookup_symbol(SymbolTable* table, const char* name) {
     Symbol* current = table->head;
-    while(current) {
+    while (current) {
         if (strcmp(current->name, name) == 0)
             return current;
         current = current->next;
@@ -40,12 +38,12 @@ Symbol* lookup_symbol(SymbolTable* table, const char* name) {
 
 void free_symbol_table(SymbolTable* table) {
     Symbol* current = table->head;
-    while(current) {
-        Symbol* tmp = current;
+    while (current) {
+        Symbol* temp = current;
         current = current->next;
-        free(tmp->name);
-        free(tmp->type);
-        free(tmp);
+        free(temp->name);
+        free(temp->type);
+        free(temp);
     }
     free(table);
 }
