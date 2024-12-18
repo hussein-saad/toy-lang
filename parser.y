@@ -182,9 +182,6 @@ factor:
   | FLOAT_NUMBER     { 
         $$ = create_literal_node(LIT_FLOAT, &(yyvsp[0].float_val)); 
     }
-  | CHAR_LITERAL     { 
-        $$ = create_literal_node(LIT_CHAR, &(yyvsp[0].char_val)); 
-    }
   | IDENTIFIER       { 
         $$ = create_identifier_node($1); 
         free($1); 
